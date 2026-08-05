@@ -1,0 +1,65 @@
+import json
+import re
+
+# ========== 1. 加载你的原始配置文件（带空值的那份） ==========
+with open("EmojiName.dat", "r", encoding="utf-8") as f:
+    input_content = f.read()
+
+# ========== 2. 加载 CLDR 数据 ==========
+with open("annotations.json", "r", encoding="utf-8") as f:
+    cldr_data = json.load(f)
+
+# 构建 字符 → tts[0] 的映射
+char_to_tts = {}
+annotations = cldr_data.get("annotations", {}).get("annotations", {})
+for char, value in annotations.items():
+    tts_list = value.get("tts", [])
+    if tts_list and tts_list[0]:
+        char_to_tts[char] = tts_list[0]
+    else:
+        # fallback 到 default[0]
+        default_list = value.get("default", [])
+        if default_list:
+            char_to_tts[char] = default_list[0]
+
+print("[OK] Loaded CLDR, total " + str(len(char_to_tts)) + " characters have names")
+
+# ========== 3. 解析并填充 ==========
+def hex_to_char(hex_code):
+    """将十六进制码位转换为字符"""
+    try:
+        code = int(hex_code, 16)
+        return chr(code)
+    except:
+        return None
+
+# 用正则匹配所有 "emojichat.button.XXXX" : "..." 的模式
+pattern = r'("emojichat\.button\.([0-9A-Fa-f]+)"\s*:\s*)"([^"]*)"'
+
+def replace_match(match):
+    full_key = match.group(1)  # "emojichat.button.A9"
+    hex_code = match.group(2)  # A9
+    current_value = match.group(3)  # 当前值（空或已有）
+    
+    # 如果已经有值（非空），保留不覆盖
+    if current_value.strip():
+        return full_key + ' : "' + current_value + '"'
+    
+    # 查找 tts
+    char = hex_to_char(hex_code)
+    if char and char in char_to_tts:
+        new_value = char_to_tts[char]
+        return full_key + ' : "' + new_value + '"'
+    else:
+        # 找不到就留空，并打印提示
+        print("[WARN] Not found: " + hex_code)
+        return full_key + ' : ""'
+
+# 执行替换
+output_content = re.sub(pattern, replace_match, input_content)
+
+# ========== 4. 输出结果 ==========
+with open("output_filled.txt", "w", encoding="utf-8") as f:
+    f.write(output_content)
+
+print("[OK] Done! Result saved to output_filled.txt")

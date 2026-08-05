@@ -12,7 +12,6 @@ public static class Assets
     private static TMP_FontAsset emojiFont;
     private static bool isEmojiLoaded = false;
 
-    // 使用HashSet存储Emoji码点，O(1)查找
     private static readonly HashSet<int> emojiSet = new();
     private static bool isEmojiListLoaded = false;
 
@@ -49,7 +48,7 @@ public static class Assets
                 return null;
             }
 
-            emojiFont = bundle.LoadAsset<TMP_FontAsset>("Assets/Font/EmojiFont SDF.asset");
+            emojiFont = bundle.LoadAsset<TMP_FontAsset>("Assets/Font/NotoEmoji SDF.asset");
             if (emojiFont == null)
             {
                 NebulaLogger.Instance.Error("TMP_FontAsset Failed to load");
@@ -77,10 +76,10 @@ public static class Assets
 
         try
         {
-            var resource = NebulaAPI.AddonAsset.GetResource("result.txt");
+            var resource = NebulaAPI.AddonAsset.GetResource("EmojiEncoding.txt");
             if (resource == null)
             {
-                NebulaLogger.Instance.Warning("result.txt does not exist");
+                NebulaLogger.Instance.Warning("EmojiEncoding.txt does not exist");
                 LoadDefaultEmojis();
                 isEmojiListLoaded = true;
                 return;
@@ -94,7 +93,7 @@ public static class Assets
 
             if (string.IsNullOrEmpty(text))
             {
-                NebulaLogger.Instance.Warning("result.txt is Null");
+                NebulaLogger.Instance.Warning("EmojiEncoding.txt is Null");
                 LoadDefaultEmojis();
                 isEmojiListLoaded = true;
                 return;

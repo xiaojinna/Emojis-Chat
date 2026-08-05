@@ -1,6 +1,8 @@
 using HarmonyLib;
+using Il2CppSystem.Runtime.Remoting.Messaging;
 using Nebula.Modules.Logging;
 using System;
+using System.Collections;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using TMPro;
@@ -286,12 +288,25 @@ public static class EmojiTextBox
 
     public static void OpenWindow()
     {
+        EmojiPagination.OpenWindow();
+    }
+
+    /*public static void OpenWindow()
+    {
         var window = MetaScreen.GenerateWindow(new Vector2(7.5f, 2.5f), AmongUsLLImpl.HudManagerInstance.transform, new Vector3(0, 1.1f, 0f), true, true, true);
 
         TextAttribute ButtonAttr = new(GUI.API.GetAttribute(AttributeAsset.OptionsButtonLonger))
         {
             Size = new(0.33f, 0.33f)
         };
+
+        IEnumerator CoCloseOnResult()
+        {
+            while (HudManager.Instance.Chat.IsOpenOrOpening) yield return null;
+            window.CloseScreen();
+        }
+
+        window.StartCoroutine(CoCloseOnResult().WrapToIl2Cpp());
 
         var emojiList = Assets.GetEmojiList().ToList();
 
@@ -340,7 +355,5 @@ public static class EmojiTextBox
 
         var wrapped = new MetaWidgetOld.WrappedWidget(scrollView);
         window.SetWidget(wrapped);
-    }
-
-
+    }*/
 }

@@ -1,0 +1,88 @@
+import re
+
+def parse_hex_range(range_str):
+    """
+    解析十六进制范围字符串，如 "1-3,5,7-A,C-F"
+    支持十进制数字和十六进制数字（0-9, A-F，不区分大小写）
+    返回一个包含所有十六进制字符串的列表
+    """
+    result = []
+    # 按逗号分割
+    parts = range_str.split(',')
+    for part in parts:
+        part = part.strip()
+        if not part:
+            continue
+        # 检查是否包含 '-' 表示范围
+        if '-' in part:
+            try:
+                start_str, end_str = part.split('-')
+                start_str = start_str.strip().upper()
+                end_str = end_str.strip().upper()
+                
+                # 将十六进制字符串转换为整数
+                start = int(start_str, 16)
+                end = int(end_str, 16)
+                
+                # 确保起始小于等于结束
+                if start <= end:
+                    # 生成范围内的所有十六进制值
+                    for num in range(start, end + 1):
+                        # 转换为大写十六进制（无前缀）
+                        result.append(format(num, 'X'))
+                else:
+                    # 如果起始大于结束，交换顺序
+                    for num in range(end, start + 1):
+                        result.append(format(num, 'X'))
+            except ValueError:
+                # 格式错误时跳过或打印警告
+                print(f"警告: 无法解析十六进制范围 '{part}'，已跳过")
+        else:
+            # 单个十六进制数字
+            try:
+                part_upper = part.upper()
+                num = int(part_upper, 16)
+                result.append(format(num, 'X'))
+            except ValueError:
+                print(f"警告: 无法解析十六进制数字 '{part}'，已跳过")
+    return result
+
+def main():
+    input_file = "EmojiEncoding.txt"    # 存放范围字符串的文件
+    output_file = "output.txt"  # 输出的目标文件
+
+    try:
+        with open(input_file, 'r', encoding='utf-8') as f:
+            # 读取全部内容，去除首尾空白字符
+            content = f.read().strip()
+            if not content:
+                print("输入文件为空，请检查。")
+                return
+            # 解析十六进制范围
+            hex_values = parse_hex_range(content)
+            if not hex_values:
+                print("未解析到任何有效十六进制值，请检查 range.txt 内容格式。")
+                return
+            # 生成输出内容（键值对格式）
+            lines = [f'"emojichat.button.{value}" : ""' for value in hex_values]
+            # 写入文件
+            with open(output_file, 'w', encoding='utf-8') as out:
+                out.write('\n'.join(lines))
+            print(f"成功生成 {len(lines)} 条记录，已写入 {output_file}")
+            # 显示前几条记录作为预览
+            if len(lines) <= 10:
+                for line in lines:
+                    print(line)
+            else:
+                for line in lines[:5]:
+                    print(line)
+                print(f"... (共 {len(lines)} 条)")
+                for line in lines[-3:]:
+                    print(line)
+    except FileNotFoundError:
+        print(f"错误: 找不到文件 {input_file}，请确保该文件存在。")
+    except Exception as e:
+        print(f"发生错误: {e}")
+
+if __name__ == "__main__":
+    main()
