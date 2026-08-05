@@ -1,2 +1,4 @@
 "emojichat.ui.pageInput" : "Please enter the page number"
 "emojichat.ui.totalPage" : "Total pages: %NUM%"
+"emojichat.ui.searchHint" : "Search Emojis"
+"emojichat.ui.noResults" : "No results found"

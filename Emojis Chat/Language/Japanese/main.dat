@@ -1,2 +1,4 @@
 "emojichat.ui.pageInput" : "ページ番号を入力してください"
 "emojichat.ui.totalPage" : "総ページ数：%NUM%"
+"emojichat.ui.searchHint" : "絵文字を探す"
+"emojichat.ui.noResults" : "没有找到结果"
