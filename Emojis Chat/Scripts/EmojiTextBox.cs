@@ -1,37 +1,13 @@
-using HarmonyLib;
-using Il2CppSystem.Runtime.Remoting.Messaging;
-using Nebula.Modules.Logging;
-using System;
-using System.Collections;
-using System.Globalization;
-using System.Text.RegularExpressions;
-using TMPro;
-using UnityEngine;
-using UnityEngine.TextCore.Text;
-using UnityEngine.UI;
-using Virial.Helpers;
-using static Il2CppMono.Security.X509.X520;
-using GUI = Nebula.Modules.GUIWidget.NebulaGUIWidgetEngine;
-using Image = UnityEngine.UI.Image;
-using Object = UnityEngine.Object;
-using Vector2 = UnityEngine.Vector2;
-using Vector3 = UnityEngine.Vector3;
-
 namespace EmojisChat;
 
 public static class EmojiTextBox
 {
     public static TMP_FontAsset emojiFont;
     public static bool isInitialized = false;
-
     public static readonly Regex emojiRegex = new Regex(
         @";([0-9a-fA-F]+);",
         RegexOptions.Compiled | RegexOptions.CultureInvariant,
-        TimeSpan.FromMilliseconds(100)
-    );
-
-    public static GameObject emojiSelectorInstance;
-    public static bool isCreatingSelector = false;
+        TimeSpan.FromMilliseconds(100));
 
     public static void InitEmoji()
     {
@@ -48,10 +24,7 @@ public static class EmojiTextBox
         }
 
         var mainFont = GetMainFont();
-        if (mainFont != null)
-        {
-            AddEmojiAsFallback(mainFont);
-        }
+        if (mainFont != null) AddEmojiAsFallback(mainFont);
 
         isInitialized = true;
     }
@@ -60,21 +33,16 @@ public static class EmojiTextBox
     {
         try
         {
-            if (HudManager.Instance != null && HudManager.Instance.IntroPrefab != null)
-            {
-                return HudManager.Instance.IntroPrefab.ImpostorText.font;
-            }
+            if (HudManager.Instance != null && HudManager.Instance.IntroPrefab != null) return HudManager.Instance.IntroPrefab.ImpostorText.font;
 
             var anyText = Object.FindObjectOfType<TMP_Text>();
-            if (anyText != null)
-            {
-                return anyText.font;
-            }
+            if (anyText != null) return anyText.font;
         }
         catch (Exception e)
         {
             NebulaLogger.Instance.Error($"{e.Message}");
         }
+
         return null;
     }
 
@@ -84,11 +52,7 @@ public static class EmojiTextBox
 
         try
         {
-            if (mainFont.fallbackFontAssetTable == null)
-            {
-                mainFont.fallbackFontAssetTable = new Il2CppSystem.Collections.Generic.List<TMP_FontAsset>();
-            }
-
+            mainFont.fallbackFontAssetTable ??= new Il2CppSystem.Collections.Generic.List<TMP_FontAsset>();
             bool exists = false;
             for (int i = 0; i < mainFont.fallbackFontAssetTable.Count; i++)
             {
@@ -111,6 +75,7 @@ public static class EmojiTextBox
             NebulaLogger.Instance.Error($"{e.Message}");
         }
     }
+
     public static void SetupTextForEmoji(TMP_Text text)
     {
         if (text == null) return;
@@ -143,31 +108,17 @@ public static class EmojiTextBox
         {
             // 使用文本元素迭代器，正确处理代理对（如 U+1FAF8）
             var elementEnumerator = StringInfo.GetTextElementEnumerator(text);
-
             while (elementEnumerator.MoveNext())
             {
                 string element = elementEnumerator.GetTextElement();
-
                 // 获取完整的Unicode码点
                 int codePoint = char.ConvertToUtf32(element, 0);
-
-                if (Assets.IsEmoji(codePoint))
-                {
-                    return true;
-                }
+                if (Assets.IsEmoji(codePoint)) return true;
             }
         }
         catch (Exception e)
         {
             NebulaLogger.Instance.Error($"{e.Message}");
-            // 备用方案：简单遍历
-            foreach (char c in text)
-            {
-                if (Assets.IsEmoji(c))
-                {
-                    return true;
-                }
-            }
         }
 
         return false;
@@ -189,28 +140,7 @@ public static class EmojiTextBox
             pos.y += 2;
             button.transform.localPosition = pos;
             button.OnClick = new Button.ButtonClickedEvent();
-            button.OnClick.AddListener(new Action(OpenWindow));
-        }
-        catch (Exception e)
-        {
-            NebulaLogger.Instance.Error($"{e.Message}");
-        }
-    }
-
-    public static bool IsDestroyed(GameObject obj)
-    {
-        return obj == null || ReferenceEquals(obj, null);
-    }
-
-    public static void InsertEmoji(int code)
-    {
-        try
-        {
-            var box = HudManager.Instance.Chat?.freeChatField?.textArea;
-            if (box != null)
-            {
-                box.SetText(box.text + ";" + code.ToString("X") + ";");
-            }
+            button.OnClick.AddListener(new Action(EmojiPagination.OpenWindow));
         }
         catch (Exception e)
         {
@@ -229,11 +159,8 @@ public static class EmojiTextBox
                 try
                 {
                     int code = Convert.ToInt32(m.Groups[1].Value, 16);
-                    if (code <= 0x10FFFF)
-                    {
-                        // 即使不在Emoji列表中，也尝试转换（可能是用户自定义）
-                        return char.ConvertFromUtf32(code);
-                    }
+                    // 即使不在Emoji列表中，也尝试转换（可能是用户自定义）
+                    if (code <= 0x10FFFF) return char.ConvertFromUtf32(code);
                     return m.Value;
                 }
                 catch
@@ -259,10 +186,7 @@ public static class EmojiTextBox
 
         try
         {
-            if (text.font.fallbackFontAssetTable == null)
-            {
-                text.font.fallbackFontAssetTable = new Il2CppSystem.Collections.Generic.List<TMP_FontAsset>();
-            }
+            if (text.font.fallbackFontAssetTable == null) text.font.fallbackFontAssetTable = new Il2CppSystem.Collections.Generic.List<TMP_FontAsset>();
 
             bool exists = false;
             foreach (var f in text.font.fallbackFontAssetTable)
@@ -273,11 +197,7 @@ public static class EmojiTextBox
                     break;
                 }
             }
-
-            if (!exists)
-            {
-                text.font.fallbackFontAssetTable.Add(emojiFont);
-            }
+            if (!exists) text.font.fallbackFontAssetTable.Add(emojiFont);
             text.SetAllDirty();
         }
         catch (Exception e)
@@ -285,75 +205,4 @@ public static class EmojiTextBox
             NebulaLogger.Instance.Error($"{e.Message}");
         }
     }
-
-    public static void OpenWindow()
-    {
-        EmojiPagination.OpenWindow();
-    }
-
-    /*public static void OpenWindow()
-    {
-        var window = MetaScreen.GenerateWindow(new Vector2(7.5f, 2.5f), AmongUsLLImpl.HudManagerInstance.transform, new Vector3(0, 1.1f, 0f), true, true, true);
-
-        TextAttribute ButtonAttr = new(GUI.API.GetAttribute(AttributeAsset.OptionsButtonLonger))
-        {
-            Size = new(0.33f, 0.33f)
-        };
-
-        IEnumerator CoCloseOnResult()
-        {
-            while (HudManager.Instance.Chat.IsOpenOrOpening) yield return null;
-            window.CloseScreen();
-        }
-
-        window.StartCoroutine(CoCloseOnResult().WrapToIl2Cpp());
-
-        var emojiList = Assets.GetEmojiList().ToList();
-
-        // 构建动态内容列表
-        var dynamicContents = new List<GUIScrollDynamicInnerContent>();
-
-        for (int i = 0; i < emojiList.Count; i += 14)
-        {
-            var rowEmojis = emojiList.Skip(i).Take(14).ToList();
-
-            // 每行作为一个水平布局
-            var rowWidget = GUI.API.HorizontalHolder(
-                GUIAlignment.Center,
-                rowEmojis.Select(emoji =>
-                {
-                    string emojiText = char.ConvertFromUtf32(emoji);
-                    return new GUIModernButton(GUIAlignment.Center, ButtonAttr, GUI.API.RawTextComponent(emojiText))
-                    {
-                        OnClick = _ =>
-                        {
-                            window.CloseScreen();
-                            var textBox = HudManager.Instance.Chat.freeChatField.textArea;
-                            textBox.SetText(textBox.text + ";" + emoji.ToString("X") + ";");
-                        },
-                        SelectedDefault = false,
-                        WithCheckMark = false,
-                        EmphasizeOnSelected = true,
-                        BlockSelectingOnClicked = true
-                    };
-                })
-            );
-
-            dynamicContents.Add(new GUIScrollDynamicInnerContent(
-                GUIAlignment.Center,
-                () => rowWidget,
-                0.4f
-            ));
-        }
-
-        // 使用虚拟化滚动视图
-        var scrollView = new GUIScrollDynamicView(
-            GUIAlignment.Center,
-            new Vector2(7.4f, 2.4f),
-            dynamicContents
-        );
-
-        var wrapped = new MetaWidgetOld.WrappedWidget(scrollView);
-        window.SetWidget(wrapped);
-    }*/
 }

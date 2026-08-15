@@ -1,11 +1,4 @@
-﻿using Cpp2IL.Core.Extensions;
-using Nebula.Modules.Logging;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using UnityEngine;
-
-namespace EmojisChat;
+﻿namespace EmojisChat;
 
 public static class Assets
 {

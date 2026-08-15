@@ -1,27 +1,3 @@
-using HarmonyLib;
-using Il2CppInterop.Runtime.Injection;
-using Il2CppSystem.Runtime.Remoting.Messaging;
-using Nebula.Modules.Logging;
-using NPinyin;
-using Rewired.UI.ControlMapper;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Text.RegularExpressions;
-using TMPro;
-using UnityEngine;
-using UnityEngine.TextCore.Text;
-using UnityEngine.UI;
-using Virial.Helpers;
-using static Il2CppMono.Security.X509.X520;
-using GUI = Nebula.Modules.GUIWidget.NebulaGUIWidgetEngine;
-using Image = UnityEngine.UI.Image;
-using Object = UnityEngine.Object;
-using Vector2 = UnityEngine.Vector2;
-using Vector3 = UnityEngine.Vector3;
-
 namespace EmojisChat;
 
 /// <summary>
@@ -113,6 +89,7 @@ public class EmojiSearchItem
     public string PinyinInitials { get; set; }  // 拼音首字母
     public string FullPinyin { get; set; }       // 完整拼音（可选）
 }
+
 public static class EmojiPagination
 {
     // 每页行数
@@ -144,9 +121,6 @@ public static class EmojiPagination
     // 滚轮监听器引用
     private static EmojiScrollListener scrollListener = null;
 
-    // 是否启用滚轮
-    public static bool EnableScrollWheel { get; set; } = true;
-
     // 确保EmojiScrollListener已注册
     private static bool isListenerRegistered = false;
 
@@ -177,11 +151,7 @@ public static class EmojiPagination
     /// </summary>
     public static void OpenWindow()
     {
-        // 防止重复打开
-        if (currentWindow != null && !currentWindow.IsDestroyed())
-        {
-            return;
-        }
+        if (currentWindow != null && !currentWindow.IsDestroyed()) return;
 
         // 初始化数据
         emojiList = Assets.GetEmojiList().ToList();
@@ -199,28 +169,10 @@ public static class EmojiPagination
             Size = new Virial.Compat.Size(0.33f, 0.33f)
         };
 
-        // 生成窗口（稍微加宽以容纳搜索框）
-        var window = MetaScreen.GenerateWindow(
-            new Vector2(7.1f, 2.3f),  // 加宽以容纳左侧搜索框
-            AmongUsLLImpl.HudManagerInstance.transform,
-            new Vector3(0, 1.2f, 0f),
-            true,
-            true,
-            true
-        );
-
+        var window = MetaScreen.GenerateWindow(new Vector2(7.1f, 2.3f), AmongUsLLImpl.HudManagerInstance.transform, new Vector3(0, 1.2f, 0f), true, true, true);
         currentWindow = window;
-
-        // 添加滚轮监听器 - 使用安全方法
-        if (EnableScrollWheel)
-        {
-            AddScrollListener(window);
-        }
-
-        // 自动关闭协程（保留原有逻辑）
+        AddScrollListener(window);
         window.StartCoroutine(CoCloseOnResult(window).WrapToIl2Cpp());
-
-        // 构建内容
         BuildPageContent(window);
     }
 
@@ -247,21 +199,14 @@ public static class EmojiPagination
             }
 
             // 尝试使用反射方式添加组件
-            scrollListener = window.gameObject.GetComponent<EmojiScrollListener>();
-            if (scrollListener == null)
-            {
-                // 使用 Activator 创建实例
-                scrollListener = window.gameObject.AddComponent<EmojiScrollListener>();
-            }
-
+            scrollListener = window.gameObject.GetComponent<EmojiScrollListener>() ?? window.gameObject.AddComponent<EmojiScrollListener>();
             if (scrollListener != null)
             {
                 scrollListener.Setup(window, direction =>
                 {
-                    if (direction < 0)
-                        NextPage(window);
-                    else
-                        PreviousPage(window);
+                    if (direction < 0) NextPage(window);
+                    else PreviousPage(window);
+
                 });
                 NebulaLogger.Instance.Message("EmojiScrollListener added successfully");
             }
@@ -269,7 +214,6 @@ public static class EmojiPagination
         catch (Exception e)
         {
             NebulaLogger.Instance.Error($"Failed to add scroll listener: {e.Message}");
-            // 滚轮功能不可用，但不影响其他功能
             scrollListener = null;
         }
     }
@@ -281,10 +225,8 @@ public static class EmojiPagination
     {
         var searchCache = emojiList.Select(e =>
         {
-            
             var hex = e.ToString("X");
             var name = Language.Translate($"emojichat.button.{hex}");
-
             return new EmojiSearchItem
             {
                 EmojiCode = e,
@@ -294,40 +236,30 @@ public static class EmojiPagination
                 FullPinyin = Pinyin.GetPinyin(name).Replace(" ", "").ToUpperInvariant()
             };
         }).ToList();
-
         currentSearchKeyword = keyword?.Trim() ?? "";
-
         if (string.IsNullOrEmpty(currentSearchKeyword))
         {
-            // 清空搜索，显示所有Emoji
             filteredEmojiList = new List<int>(emojiList);
         }
         else
         {
             string keywordUpper = currentSearchKeyword.ToUpperInvariant();
-
             filteredEmojiList = searchCache
                 .Where(item => item.HexCode.Contains(keywordUpper, StringComparison.Ordinal) ||
                                item.LocalizedName.Contains(keywordUpper, StringComparison.Ordinal) ||
                                item.PinyinInitials.Contains(keywordUpper, StringComparison.Ordinal) ||
                                item.FullPinyin.Contains(keywordUpper, StringComparison.Ordinal))
                 .Select(item => item.EmojiCode).ToList();
-
         }
 
         // 重置到第一页
         currentPage = 0;
         totalPages = Mathf.CeilToInt((float)filteredEmojiList.Count / EmojisPerPage);
         if (totalPages == 0) totalPages = 1;
-
         // 更新页码输入框
         UpdatePageInputField();
-
         // 重建页面
-        if (currentWindow != null && !currentWindow.IsDestroyed())
-        {
-            BuildPageContent(currentWindow);
-        }
+        if (currentWindow != null && !currentWindow.IsDestroyed()) BuildPageContent(currentWindow);
     }
 
     /// <summary>
@@ -346,10 +278,7 @@ public static class EmojiPagination
                 if (child == window.transform) continue;
                 var go = child.gameObject;
                 if (go == null) continue;
-                if (go.name != "BorderLine" && go.name != "EmojiScrollListener(Clone)" && go.name != "EmojiScrollListener")
-                {
-                    GameObject.Destroy(go);
-                }
+                if (go.name != "BorderLine" && go.name != "EmojiScrollListener(Clone)" && go.name != "EmojiScrollListener") GameObject.Destroy(go);
             }
         }
         catch (Exception e)
@@ -377,11 +306,8 @@ public static class EmojiPagination
         {
             int rowStart = startIndex + row * EmojisPerRow;
             int rowEnd = Mathf.Min(rowStart + EmojisPerRow, endIndex);
-
             if (rowStart >= endIndex) break;
-
             var rowEmojis = filteredEmojiList.Skip(rowStart).Take(rowEnd - rowStart).ToList();
-
             // 构建一行Emoji按钮
             var rowWidget = BuildEmojiRow(rowEmojis);
             rowWidgets.Add(rowWidget);
@@ -425,10 +351,7 @@ public static class EmojiPagination
             // 失去焦点 - Action<string> 不需要返回值
             LostFocusAction = text =>
             {
-                if (!string.IsNullOrEmpty(text))
-                {
-                    TryJumpToPage(text);
-                }
+                if (!string.IsNullOrEmpty(text)) TryJumpToPage(text);
             }
         };
 
@@ -438,17 +361,14 @@ public static class EmojiPagination
         // 翻页按钮区域（右侧）
         var pageControls = NebulaAPI.GUI.HorizontalHolder(
             GUIAlignment.BottomLeft,
-
             // 上一页按钮
             new GUIModernButton(GUIAlignment.Center, buttonAttr, NebulaAPI.GUI.RawTextComponent("▲"))
             {
                 OnClick = _ => PreviousPage(window),
                 SelectedDefault = false
             },
-
             // 页码输入框
             pageInput,
-
             // 页码总数显示
             NebulaAPI.GUI.RawText(
                 GUIAlignment.Center,
@@ -458,37 +378,25 @@ public static class EmojiPagination
                 },
                 Language.Translate("emojichat.ui.totalPage").Replace("%NUM%", totalPages.ToString())
             ),
-
             // 下一页按钮
             new GUIModernButton(GUIAlignment.Center, buttonAttr, NebulaAPI.GUI.RawTextComponent("▼"))
             {
                 OnClick = _ => NextPage(window),
                 SelectedDefault = false
             },
-
             NebulaAPI.GUI.RawText(GUIAlignment.Center, new TextAttribute(NebulaAPI.GUI.GetAttribute(AttributeAsset.OptionsValue))
             {
-                Size = new Virial.Compat.Size(1f, 0.33f)
+                Size = new Virial.Compat.Size(2.5f, 0.33f)
             }, EmojiCode)
         );
         rowWidgets.Add(pageControls);
-
         // 垂直布局所有行
-        ContentWidget = NebulaAPI.GUI.VerticalHolder(
-            GUIAlignment.Bottom,
-            rowWidgets
-        );
-
+        ContentWidget = NebulaAPI.GUI.VerticalHolder(GUIAlignment.Bottom, rowWidgets);
         // 创建主容器：搜索框 + 内容 + 翻页按钮
         var mainLayout = BuildMainLayout(window, ContentWidget);
-
         // 创建适配器并设置到窗口
         var wrapped = new MetaWidgetOld.WrappedWidget(mainLayout);
         window.SetWidget(wrapped);
-
-        // 更新翻页按钮状态
-        UpdatePaginationButtons(window);
-
         // 更新页码输入框
         UpdatePageInputField();
     }
@@ -501,11 +409,7 @@ public static class EmojiPagination
         var buttons = emojis.Select(emoji =>
         {
             string emojiText = char.ConvertFromUtf32(emoji);
-            return new GUIModernButton(
-                GUIAlignment.Center,
-                buttonAttr,
-                NebulaAPI.GUI.RawTextComponent(emojiText)
-            )
+            return new GUIModernButton(GUIAlignment.Center, buttonAttr, NebulaAPI.GUI.RawTextComponent(emojiText))
             {
                 OnClick = _ =>
                 {
@@ -537,11 +441,7 @@ public static class EmojiPagination
                 BlockSelectingOnClicked = true
             };
         });
-
-        return NebulaAPI.GUI.HorizontalHolder(
-            GUIAlignment.Center,
-            buttons
-        );
+        return NebulaAPI.GUI.HorizontalHolder(GUIAlignment.Center, buttons);
     }
 
     /// <summary>
@@ -550,10 +450,7 @@ public static class EmojiPagination
     private static Virial.Media.GUIWidget BuildSearchArea()
     {
         // 搜索输入框
-        var searchInput = new GUITextField(
-            GUIAlignment.Center,
-            new Virial.Compat.Size(1.2f, 0.35f)
-        )
+        var searchInput = new GUITextField(GUIAlignment.Center, new Size(1.2f, 0.35f))
         {
             HintText = Language.Translate("emojichat.ui.searchHint"),
             DefaultText = currentSearchKeyword,
@@ -561,8 +458,6 @@ public static class EmojiPagination
             MaxLines = 1,
             WithMaskMaterial = true,
             GainFocus = false,
-            // 输入过滤：只允许十六进制字符（数字和A-F）
-            //TextPredicate = c => true,
             // 回车执行搜索
             EnterAction = text =>
             {
@@ -577,11 +472,7 @@ public static class EmojiPagination
         };
 
         // 垂直排列搜索区域
-        return NebulaAPI.GUI.VerticalHolder(
-            GUIAlignment.TopLeft,
-            // 搜索标题
-            searchInput
-        );
+        return NebulaAPI.GUI.VerticalHolder(GUIAlignment.TopLeft, searchInput);
     }
 
     /// <summary>
@@ -589,32 +480,14 @@ public static class EmojiPagination
     /// </summary>
     private static Virial.Media.GUIWidget BuildMainLayout(MetaScreen window, Virial.Media.GUIWidget content)
     {
-        // 翻页按钮属性
-        var pageButtonAttr = new TextAttribute(NebulaAPI.GUI.GetAttribute(AttributeAsset.OptionsButton))
-        {
-            Size = new Virial.Compat.Size(0.6f, 0.25f)
-        };
-
         // 行间距
         const float rowGap = 0.05f;
-
         // 构建垂直内容
-        var verticalContent = NebulaAPI.GUI.VerticalHolder(
-            GUIAlignment.Center,
-            content,
-            NebulaAPI.GUI.Margin(new FuzzySize(0f, rowGap * 2))
-        );
-
+        var verticalContent = NebulaAPI.GUI.VerticalHolder(GUIAlignment.Center, content, NebulaAPI.GUI.Margin(new FuzzySize(0f, rowGap * 2)));
         // 左侧搜索区域
         var searchArea = BuildSearchArea();
-
         // 水平布局：搜索框 | 内容 | 翻页按钮
-        return NebulaAPI.GUI.HorizontalHolder(
-            GUIAlignment.TopRight,
-            searchArea,
-            NebulaAPI.GUI.Margin(new FuzzySize(0.1f, 0f)),
-            verticalContent
-        );
+        return NebulaAPI.GUI.HorizontalHolder(GUIAlignment.TopRight, searchArea, NebulaAPI.GUI.Margin(new FuzzySize(0.1f, 0f)), verticalContent);
     }
 
     /// <summary>
@@ -623,36 +496,22 @@ public static class EmojiPagination
     private static void TryJumpToPage(string input)
     {
         if (string.IsNullOrEmpty(input)) return;
-
         // 尝试解析数字
         if (int.TryParse(input, out int targetPage))
         {
             // 转换为0基索引
             targetPage = targetPage - 1;
-
             // 限制在有效范围内
             targetPage = Mathf.Clamp(targetPage, 0, totalPages - 1);
-
             // 如果页码有变化，则跳转
             if (targetPage != currentPage)
             {
                 currentPage = targetPage;
-                if (currentWindow != null && !currentWindow.IsDestroyed())
-                {
-                    BuildPageContent(currentWindow);
-                }
+                if (currentWindow != null && !currentWindow.IsDestroyed()) BuildPageContent(currentWindow);
             }
-            else
-            {
-                // 如果页码相同，只更新输入框显示
-                UpdatePageInputField();
-            }
+            else UpdatePageInputField();
         }
-        else
-        {
-            // 无效输入，恢复显示当前页码
-            UpdatePageInputField();
-        }
+        else UpdatePageInputField();
     }
 
     /// <summary>
@@ -661,7 +520,6 @@ public static class EmojiPagination
     private static void UpdatePageInputField()
     {
         if (pageInputField == null) return;
-
         // 通过Artifact获取TextField并更新文本
         var artifact = pageInputField.Artifact;
         if (artifact != null && artifact.Values.Count > 0)
@@ -673,10 +531,7 @@ public static class EmojiPagination
                 try
                 {
                     var setTextMethod = textField.GetType().GetMethod("SetText");
-                    if (setTextMethod != null)
-                    {
-                        setTextMethod.Invoke(textField, new object[] { (currentPage + 1).ToString() });
-                    }
+                    if (setTextMethod != null) setTextMethod.Invoke(textField, new object[] { (currentPage + 1).ToString() });
                 }
                 catch (Exception e)
                 {
@@ -684,15 +539,6 @@ public static class EmojiPagination
                 }
             }
         }
-    }
-
-    /// <summary>
-    /// 更新翻页按钮状态
-    /// </summary>
-    private static void UpdatePaginationButtons(MetaScreen window)
-    {
-        // 由于我们是重新构建整个页面，状态已经是最新的
-        // 这里可以留空，或者添加额外的状态更新逻辑
     }
 
     /// <summary>
