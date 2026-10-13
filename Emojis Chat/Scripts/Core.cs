@@ -1,4 +1,6 @@
-﻿namespace EmojisChat;
+﻿using Nebula.Patches;
+
+namespace EmojisChat;
 
 [NebulaPreprocess(PreprocessPhase.PostRoles)]
 public static class Core
@@ -7,18 +9,17 @@ public static class Core
 
     static Core()
     {
+        NebulaLogger.Instance.Message($"Loading [Emojis]");
+        harmony = new Harmony("com.github.xiaojinna.Emoji");
         Init();
     }
 
     public static void Init()
     {
-
         try
         {
-            Assets.InitializeEmojiList();
-
-            harmony = new Harmony("com.github.xiaojinna.Emoji");
             harmony.PatchAll(Assembly.GetExecutingAssembly());
+            Assets.InitializeEmojiList();
         }
         catch (Exception e)
         {

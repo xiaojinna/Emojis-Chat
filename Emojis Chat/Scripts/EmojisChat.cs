@@ -105,21 +105,21 @@ public static class EmojiPagination
     private static int totalPages = 0;
 
     // 当前窗口引用
-    private static MetaScreen currentWindow = null;
+    private static MetaScreen? currentWindow = null;
 
     // 所有Emoji列表
-    private static List<int> emojiList = null;
+    private static List<int>? emojiList = null;
     // 当前筛选后的Emoji列表
-    private static List<int> filteredEmojiList = null;
+    private static List<int>? filteredEmojiList = null;
 
     // 按钮属性缓存
-    private static TextAttribute buttonAttr = null;
+    private static TextAttribute? buttonAttr = null;
 
     // 页码输入框引用
-    private static GUITextField pageInputField = null;
+    private static GUITextField? pageInputField = null;
 
     // 滚轮监听器引用
-    private static EmojiScrollListener scrollListener = null;
+    private static EmojiScrollListener? scrollListener = null;
 
     // 确保EmojiScrollListener已注册
     private static bool isListenerRegistered = false;
@@ -151,14 +151,16 @@ public static class EmojiPagination
     /// </summary>
     public static void OpenWindow()
     {
-        if (currentWindow != null && !currentWindow.IsDestroyed()) return;
+        if (currentWindow != null && currentWindow.IsDestroyed())
+        {
+            currentWindow = null;
+        }
 
         // 初始化数据
         emojiList = Assets.GetEmojiList().ToList();
         filteredEmojiList = new List<int>(emojiList);
         totalPages = Mathf.CeilToInt((float)filteredEmojiList.Count / EmojisPerPage);
         currentPage = 0;
-        currentWindow = null;
         pageInputField = null;
         scrollListener = null;
         currentSearchKeyword = "";
@@ -169,18 +171,18 @@ public static class EmojiPagination
             Size = new Virial.Compat.Size(0.33f, 0.33f)
         };
 
-        var window = MetaScreen.GenerateWindow(new Vector2(7.1f, 2.3f), AmongUsLLImpl.HudManagerInstance.transform, new Vector3(0, 1.2f, 0f), true, true, true);
-        currentWindow = window;
-        AddScrollListener(window);
-        window.StartCoroutine(CoCloseOnResult(window).WrapToIl2Cpp());
-        BuildPageContent(window);
+        currentWindow = MetaScreen.GenerateWindow(new Vector2(7.1f, 2.3f), AmongUsLLImpl.HudManagerInstance.transform, new Vector3(0, 1.2f, 0f), true, true, true);
+        AddScrollListener();
+        currentWindow.StartCoroutine(CoCloseOnResult().WrapToIl2Cpp());
+        BuildPageContent();
     }
 
     /// <summary>
     /// 安全添加滚轮监听器
     /// </summary>
-    private static void AddScrollListener(MetaScreen window)
+    private static void AddScrollListener()
     {
+        if (currentWindow == null) return;
         try
         {
             // 确保类已注册
@@ -199,13 +201,13 @@ public static class EmojiPagination
             }
 
             // 尝试使用反射方式添加组件
-            scrollListener = window.gameObject.GetComponent<EmojiScrollListener>() ?? window.gameObject.AddComponent<EmojiScrollListener>();
+            scrollListener = currentWindow.gameObject.GetComponent<EmojiScrollListener>() ?? currentWindow.gameObject.AddComponent<EmojiScrollListener>();
             if (scrollListener != null)
             {
-                scrollListener.Setup(window, direction =>
+                scrollListener.Setup(currentWindow, direction =>
                 {
-                    if (direction < 0) NextPage(window);
-                    else PreviousPage(window);
+                    if (direction < 0) NextPage();
+                    else PreviousPage();
 
                 });
                 NebulaLogger.Instance.Message("EmojiScrollListener added successfully");
@@ -256,26 +258,24 @@ public static class EmojiPagination
         currentPage = 0;
         totalPages = Mathf.CeilToInt((float)filteredEmojiList.Count / EmojisPerPage);
         if (totalPages == 0) totalPages = 1;
-        // 更新页码输入框
-        UpdatePageInputField();
         // 重建页面
-        if (currentWindow != null && !currentWindow.IsDestroyed()) BuildPageContent(currentWindow);
+        if (currentWindow != null && !currentWindow.IsDestroyed()) BuildPageContent();
     }
 
     /// <summary>
     /// 构建指定页的内容
     /// </summary>
-    private static void BuildPageContent(MetaScreen window)
+    private static void BuildPageContent()
     {
-        if (window == null) return;
+        if (currentWindow == null) return;
 
         // 清空旧内容 - 保留 BorderLine 和 EmojiScrollListener
         try
         {
-            var children = window.gameObject.GetComponentsInChildren<Transform>();
+            var children = currentWindow.gameObject.GetComponentsInChildren<Transform>();
             foreach (var child in children)
             {
-                if (child == window.transform) continue;
+                if (child == currentWindow.transform) continue;
                 var go = child.gameObject;
                 if (go == null) continue;
                 if (go.name != "BorderLine" && go.name != "EmojiScrollListener(Clone)" && go.name != "EmojiScrollListener") GameObject.Destroy(go);
@@ -295,7 +295,7 @@ public static class EmojiPagination
         {
             // 如果超出范围，回到第一页
             currentPage = 0;
-            BuildPageContent(window);
+            BuildPageContent();
             return;
         }
 
@@ -364,7 +364,7 @@ public static class EmojiPagination
             // 上一页按钮
             new GUIModernButton(GUIAlignment.Center, buttonAttr, NebulaAPI.GUI.RawTextComponent("▲"))
             {
-                OnClick = _ => PreviousPage(window),
+                OnClick = _ => PreviousPage(),
                 SelectedDefault = false
             },
             // 页码输入框
@@ -381,7 +381,7 @@ public static class EmojiPagination
             // 下一页按钮
             new GUIModernButton(GUIAlignment.Center, buttonAttr, NebulaAPI.GUI.RawTextComponent("▼"))
             {
-                OnClick = _ => NextPage(window),
+                OnClick = _ => NextPage(),
                 SelectedDefault = false
             },
             NebulaAPI.GUI.RawText(GUIAlignment.Center, new TextAttribute(NebulaAPI.GUI.GetAttribute(AttributeAsset.OptionsValue))
@@ -393,10 +393,10 @@ public static class EmojiPagination
         // 垂直布局所有行
         ContentWidget = NebulaAPI.GUI.VerticalHolder(GUIAlignment.Bottom, rowWidgets);
         // 创建主容器：搜索框 + 内容 + 翻页按钮
-        var mainLayout = BuildMainLayout(window, ContentWidget);
+        var mainLayout = BuildMainLayout(currentWindow, ContentWidget);
         // 创建适配器并设置到窗口
         var wrapped = new MetaWidgetOld.WrappedWidget(mainLayout);
-        window.SetWidget(wrapped);
+        currentWindow.SetWidget(wrapped);
         // 更新页码输入框
         UpdatePageInputField();
     }
@@ -424,7 +424,7 @@ public static class EmojiPagination
                     if (currentWindow != null && ContentWidget != null && EmojiCode != Language.Translate("emojichat.button." + emoji.ToString("X")))
                     {
                         EmojiCode = Language.Translate("emojichat.button." + emoji.ToString("X"));
-                        BuildPageContent(currentWindow);
+                        BuildPageContent();
                     }
                 },
                 OnMouseOut = _ =>
@@ -432,7 +432,7 @@ public static class EmojiPagination
                     if (currentWindow != null && ContentWidget != null)
                     {
                         EmojiCode = "";
-                        BuildPageContent(currentWindow);
+                        BuildPageContent();
                     }
                 },
                 SelectedDefault = false,
@@ -507,7 +507,7 @@ public static class EmojiPagination
             if (targetPage != currentPage)
             {
                 currentPage = targetPage;
-                if (currentWindow != null && !currentWindow.IsDestroyed()) BuildPageContent(currentWindow);
+                if (currentWindow != null && !currentWindow.IsDestroyed()) BuildPageContent();
             }
             else UpdatePageInputField();
         }
@@ -544,52 +544,60 @@ public static class EmojiPagination
     /// <summary>
     /// 上一页
     /// </summary>
-    private static void PreviousPage(MetaScreen window)
+    private static void PreviousPage()
     {
         if (currentPage > 0)
         {
             currentPage--;
-            BuildPageContent(window);
+            BuildPageContent();
         }
     }
 
     /// <summary>
     /// 下一页
     /// </summary>
-    private static void NextPage(MetaScreen window)
+    private static void NextPage()
     {
         if (currentPage < totalPages - 1)
         {
             currentPage++;
-            BuildPageContent(window);
+            BuildPageContent();
         }
     }
 
     /// <summary>
     /// 自动关闭协程
     /// </summary>
-    private static System.Collections.IEnumerator CoCloseOnResult(MetaScreen window)
+    private static System.Collections.IEnumerator CoCloseOnResult()
     {
         while (HudManager.Instance.Chat.IsOpenOrOpening)
         {
             yield return null;
         }
 
-        if (window != null && !window.IsDestroyed())
+        if (currentWindow != null && !currentWindow.IsDestroyed())
         {
-            window.CloseScreen();
+            currentWindow.CloseScreen();
             currentWindow = null;
         }
     }
 
     /// <summary>
-    /// 检查窗口是否已销毁
+    /// 检查窗口是否已销毁或正在销毁
     /// </summary>
     private static bool IsDestroyed(this MetaScreen window)
     {
         try
         {
-            return window == null || window.gameObject == null || ReferenceEquals(window, null);
+            if (window == null || ReferenceEquals(window, null)) return true;
+            var go = window.gameObject;
+            if (go == null) return true;
+            if (!go.activeInHierarchy)
+            {
+                return true;
+            }
+
+            return false;
         }
         catch
         {

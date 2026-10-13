@@ -1,3 +1,5 @@
+using Il2CppSystem.Runtime.Remoting.Messaging;
+
 namespace EmojisChat;
 
 [HarmonyPatch]
@@ -10,20 +12,16 @@ static class EmojiPatch
         __instance.allowAllCharacters = true;
         __instance.AllowSymbols = true;
         __instance.AllowEmail = true;
-        __instance.AllowPaste = true;
+        if (!NebulaAddon.AllAddons.Any(addon => addon.Id == "Plan17ResourcesPlana"))
+        {
+            __instance.AllowPaste = true;
+        }
     }
 
     [HarmonyPatch(typeof(ChatController), nameof(ChatController.Awake))]
     [HarmonyPostfix]
     static void ChatAwake(ChatController __instance)
     {
-        var textArea = __instance.freeChatField.textArea;
-        if (textArea != null)
-        {
-            if (textArea.outputText != null) EmojiTextBox.SetupTextForEmoji(textArea.outputText);
-            if (textArea.placeholderText != null) EmojiTextBox.SetupTextForEmoji(textArea.placeholderText);
-        }
-
         EmojiTextBox.CreateEmojiButton();
     }
 
@@ -67,6 +65,28 @@ static class EmojiPatch
                 EmojiTextBox.SetupTextForEmoji(__instance.chatText);
                 __instance.chatText.SetText(convertedText);
             }
+        }
+        catch (Exception e)
+        {
+            NebulaLogger.Instance.Error($"{e.Message}");
+        }
+    }
+
+    [HarmonyPatch(typeof(LobbyBehaviour), nameof(LobbyBehaviour.Start))]
+    [HarmonyPostfix]
+    static void OnLobbyStartPostfix(LobbyBehaviour __instance)
+    {
+        try
+        {
+            NebulaManager.Instance.StartDelayAction(1.5f, () => 
+            {
+                var player = PlayerControl.LocalPlayer;
+                var originName = player.name;
+                player.SetName("Emojis Chat");
+                HudManager.Instance.Chat.AddChat(player, Language.Translate("emojis.welcome"));
+                player.SetName(originName);
+            });
+
         }
         catch (Exception e)
         {
